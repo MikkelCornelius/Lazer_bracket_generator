@@ -2319,7 +2319,7 @@ discord_button.pack(side="left")
 #create github link button
 github_logo = ctk.CTkImage(light_image=Image.open('Resources/github_logo.png'), size=(50, 40))
 
-github_button = ctk.CTkButton(feedback_frame, text='', width=50, image=github_logo, command=lambda: webbrowser.open('https://github.com/MikkelCornelius/Lazer_bracket/issues'), fg_color="white", hover_color="grey95")
+github_button = ctk.CTkButton(feedback_frame, text='', width=50, image=github_logo, command=lambda: webbrowser.open('https://github.com/MikkelCornelius/Lazer_bracket_generator/issues'), fg_color="white", hover_color="grey95")
 github_button.pack(side="left")
 
 ###
