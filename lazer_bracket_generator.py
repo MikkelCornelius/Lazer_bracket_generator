@@ -149,8 +149,13 @@ def on_closing():
     #close window
     outer_root.destroy()
 
+def on_closing_window(window: tk.Toplevel):
+    global script_terminating
+    script_terminating = True
+    window.destroy()
+
 #error solver
-def on_closing_error_solver(lobby: int, scores: dict, e_root: tk.Toplevel, e_remember_var: tk.BooleanVar):
+def on_submit_error_solver(lobby: int, scores: dict, e_root: tk.Toplevel, e_remember_var: tk.BooleanVar):
     global failed_lobby_data
     outer_root.focus_set()
 
@@ -274,16 +279,16 @@ def error_solver(api: Ossapi, lobby: int, mod_count: dict, teams_vs: bool, teams
     message_label.grid(row=number_of_rows(e_root), column=0, columnspan=5, padx=GUI_xspacing, pady=GUI_yspacing, sticky='w')
 
     #set delete protocol
-    e_root.protocol("WM_DELETE_WINDOW", lambda: on_closing_error_solver(lobby, failed_lobby_score_input_boxes, e_root, e_remember_var))
+    e_root.protocol("WM_DELETE_WINDOW", lambda: on_closing_window(e_root))
 
     #make submit button (just a close window button)
-    close_error_solver_button = ctk.CTkButton(e_root, text="Submit", command=lambda: on_closing_error_solver(lobby, failed_lobby_score_input_boxes, e_root, e_remember_var))
+    close_error_solver_button = ctk.CTkButton(e_root, text="Submit", command=lambda: on_submit_error_solver(lobby, failed_lobby_score_input_boxes, e_root, e_remember_var))
     close_error_solver_button.grid(row=number_of_rows(e_root), column=0, padx=GUI_xspacing, pady=GUI_yspacing, sticky='w')
     
     ##make submit button active upon enter press
 
     # Bind the Enter key to the function when the Toplevel is in focus
-    e_root.bind("<Return>", lambda event: on_closing_error_solver(lobby, failed_lobby_score_input_boxes, e_root, e_remember_var))
+    e_root.bind("<Return>", lambda event: on_submit_error_solver(lobby, failed_lobby_score_input_boxes, e_root, e_remember_var))
     
     # Set focus on the Toplevel
     e_root.focus_set()
@@ -293,7 +298,7 @@ def error_solver(api: Ossapi, lobby: int, mod_count: dict, teams_vs: bool, teams
         e_root.unbind("<Return>")
 
     def on_focus_in(event):
-        e_root.bind("<Return>", lambda event: on_closing_error_solver(lobby, failed_lobby_score_input_boxes, e_root, e_remember_var))
+        e_root.bind("<Return>", lambda event: on_submit_error_solver(lobby, failed_lobby_score_input_boxes, e_root, e_remember_var))
 
     # Bind focus out event to unbind the Enter key
     e_root.bind("<FocusOut>", on_focus_out)
@@ -337,7 +342,7 @@ def add_player_manual_scores(m_root: tk.Toplevel, player_input_boxes: list, map_
         individual_scores.append(text_box)
     manual_score_input_boxes.append(individual_scores)
 
-def on_closing_manual_scores(m_root: tk.Toplevel, player_input_boxes: list, manual_score_input_boxes: list, m_remember_var: tk.BooleanVar, team_vs: bool):
+def on_submit_manual_scores(m_root: tk.Toplevel, player_input_boxes: list, manual_score_input_boxes: list, m_remember_var: tk.BooleanVar, team_vs: bool):
     global scores_dict
     scores_dict = {}
     outer_root.focus_set()
@@ -374,6 +379,8 @@ def on_closing_manual_scores(m_root: tk.Toplevel, player_input_boxes: list, manu
 def manual_scores_input(mod_count: dict, team_vs: bool):
     global scores_dict
     global manual_player_input_boxes
+    global manual_score_input_boxes
+    manual_score_input_boxes = []
 
     #count number of maps for later use
     map_count = 0
@@ -416,10 +423,10 @@ def manual_scores_input(mod_count: dict, team_vs: bool):
             mod_label.grid(row=3, column=coloumn_index, padx=GUI_xspacing, pady=GUI_yspacing)
 
     #set delete protocol
-    m_root.protocol("WM_DELETE_WINDOW", lambda: on_closing_manual_scores(m_root, manual_player_input_boxes, manual_score_input_boxes, m_remember_var, team_vs))
+    m_root.protocol("WM_DELETE_WINDOW", lambda: on_closing_window(m_root))
 
     #make submit button (just a close window button)
-    close_manual_input_button = ctk.CTkButton(m_root, text="Submit", command=lambda: on_closing_manual_scores(m_root, manual_player_input_boxes, manual_score_input_boxes, m_remember_var, team_vs))
+    close_manual_input_button = ctk.CTkButton(m_root, text="Submit", command=lambda: on_submit_manual_scores(m_root, manual_player_input_boxes, manual_score_input_boxes, m_remember_var, team_vs))
     close_manual_input_button.grid(row=number_of_rows(m_root), column=0, padx=GUI_xspacing, pady=GUI_yspacing, sticky='w')
 
     #make remember checkbox
@@ -463,7 +470,7 @@ def manual_scores_input(mod_count: dict, team_vs: bool):
     ##make submit button active upon enter press
 
     # Bind the Enter key to the function when the Toplevel is in focus
-    m_root.bind("<Return>", lambda event: on_closing_manual_scores(m_root, manual_player_input_boxes, manual_score_input_boxes, m_remember_var, team_vs))
+    m_root.bind("<Return>", lambda event: on_submit_manual_scores(m_root, manual_player_input_boxes, manual_score_input_boxes, m_remember_var, team_vs))
     
     # Set focus on the Toplevel
     m_root.focus_set()
@@ -473,7 +480,7 @@ def manual_scores_input(mod_count: dict, team_vs: bool):
         m_root.unbind("<Return>")
 
     def on_focus_in(event):
-        m_root.bind("<Return>", lambda event: on_closing_manual_scores(m_root, manual_player_input_boxes, manual_score_input_boxes, m_remember_var, team_vs))
+        m_root.bind("<Return>", lambda event: on_submit_manual_scores(m_root, manual_player_input_boxes, manual_score_input_boxes, m_remember_var, team_vs))
 
     # Bind focus out event to unbind the Enter key
     m_root.bind("<FocusOut>", on_focus_out)
@@ -485,7 +492,7 @@ def manual_scores_input(mod_count: dict, team_vs: bool):
     m_root.wait_window()
 
 #acronym solver
-def on_closing_acronym_solver(a_root: ctk.CTkToplevel, acronym_inputboxes: list, dublicated_acronyms: list, team_vs: bool):
+def on_submit_acronym_solver(a_root: ctk.CTkToplevel, acronym_inputboxes: list, dublicated_acronyms: list, team_vs: bool):
     global player_data
     global acronym_warning_text
     global seeding
@@ -567,16 +574,16 @@ def acronym_solver(dublicated_acronyms: list, team_vs: bool):
         current_row += 1
 
     #set delete protocol
-    a_root.protocol("WM_DELETE_WINDOW", lambda: on_closing_acronym_solver(a_root, acronym_inputboxes, dublicated_acronyms, team_vs))
+    a_root.protocol("WM_DELETE_WINDOW", lambda: on_closing_window(a_root))
     
     #make submit button (just a close window button)
-    close_acronym_solver_button = ctk.CTkButton(a_root, text="Submit", command=lambda: on_closing_acronym_solver(a_root, acronym_inputboxes, dublicated_acronyms, team_vs))
+    close_acronym_solver_button = ctk.CTkButton(a_root, text="Submit", command=lambda: on_submit_acronym_solver(a_root, acronym_inputboxes, dublicated_acronyms, team_vs))
     close_acronym_solver_button.grid(row=number_of_rows(a_root), padx=GUI_xspacing, pady=GUI_yspacing, sticky='w')
 
     ##make submit button active upon enter press
 
     # Bind the Enter key to the function when the Toplevel is in focus
-    a_root.bind("<Return>", lambda event: on_closing_acronym_solver(a_root, acronym_inputboxes, dublicated_acronyms, team_vs))
+    a_root.bind("<Return>", lambda event: on_submit_acronym_solver(a_root, acronym_inputboxes, dublicated_acronyms, team_vs))
     
     # Set focus on the Toplevel
     a_root.focus_set()
@@ -586,7 +593,7 @@ def acronym_solver(dublicated_acronyms: list, team_vs: bool):
         a_root.unbind("<Return>")
 
     def on_focus_in(event):
-        a_root.bind("<Return>", lambda event: on_closing_acronym_solver(a_root, acronym_inputboxes, dublicated_acronyms, team_vs))
+        a_root.bind("<Return>", lambda event: on_submit_acronym_solver(a_root, acronym_inputboxes, dublicated_acronyms, team_vs))
 
     # Bind focus out event to unbind the Enter key
     a_root.bind("<FocusOut>", on_focus_out)
