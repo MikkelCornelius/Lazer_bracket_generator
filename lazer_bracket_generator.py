@@ -57,7 +57,7 @@ def execute():
         #create teams dictionary
         teams_dict = {}
         if teams_vs:
-            input_teams = team_vs_input_box.get("1.0", tk.END).split('\n')
+            input_teams = team_vs_input_box.get("1.0", tk.END).replace('\t', ',').split('\n') #allow for tab seperated values
 
             #remove empty lines
             input_teams = [x for x in input_teams if x != '']
@@ -676,11 +676,16 @@ def toggle_team_vs():
 
     #place teams input box upon event of clicking teamVS checkbox
     if team_vs_var.get():
-        team_vs_input_box.grid(row=number_of_rows(settings_frame), sticky='w')
+        position = number_of_rows(settings_frame)
+        team_vs_input_title.grid(row=position, sticky='w')
+        team_vs_input_box.grid(row=position+1, sticky='w')
+        team_vs_input_help.grid(row=position+2, sticky='w')
 
     #if the event was "unchecking" the checkbox, then remove the textbox
     else:
+        team_vs_input_title.grid_remove()
         team_vs_input_box.grid_remove()
+        team_vs_input_help.grid_remove()
 
 def toggle_redemption():
 
@@ -935,18 +940,20 @@ def convert_scores_to_np(scores: dict) -> np.ndarray:
 
 def get_seeding(scores: np.ndarray, seeding_method: str, mappool_size: int) -> np.ndarray:
     global seeding
-    if seeding_method!="Total Score":
-        map_seeds = np.zeros(scores.shape, dtype=int)[:, 1:]
-        number_of_players = scores.shape[0]
-        number_of_rounds = scores.shape[1]-1
-        for round in range(number_of_rounds):
-            numbers = scores[:,round+1].astype(int)
-            seeds = number_of_players-np.argsort(numbers).argsort()
-            map_seeds[:,round] = seeds
-    else:
+    global seeding_out
+
+    map_seeds = np.zeros(scores.shape, dtype=int)[:, 1:]
+    number_of_players = scores.shape[0]
+    number_of_rounds = scores.shape[1]-1
+    for round in range(number_of_rounds):
+        numbers = scores[:,round+1].astype(int)
+        seeds = number_of_players-np.argsort(numbers).argsort()
+        map_seeds[:,round] = seeds
+    map_seeds_out = map_seeds
+    if seeding_method=="Total Score":
         map_seeds = scores[:, 1:]
     if seeding_method=="Zipf's Law":
-        row_sums = np.sum(100/map_seeds+mappool_size*1.4, axis=1)
+        row_sums = np.sum(100/(map_seeds+mappool_size*1.4), axis=1)
         sorted_indices = np.argsort(row_sums)[::-1]
     else:
         sorted_indices = np.argsort(map_seeds.sum(1))
@@ -956,6 +963,13 @@ def get_seeding(scores: np.ndarray, seeding_method: str, mappool_size: int) -> n
     else:
         final_seed[sorted_indices] = np.arange(len(sorted_indices), 0, -1)
     seeding = np.column_stack([scores[:,0], map_seeds, final_seed])
+    if seeding_method=="Zipf's Law":
+        seed_score = row_sums
+    elif seeding_method=="Average Rank":
+        seed_score = map_seeds.sum(1)/mappool_size
+    else:
+        seed_score = map_seeds.sum(1)
+    seeding_out = np.column_stack([scores[:,0], map_seeds_out, seed_score])
 
 def get_map_seeds(seeding: np.ndarray, player: int, mod_count: dict, maps: list, mod: int, scores_np: np.ndarray, included_mods: list, team_vs) -> dict:
     output = {}
@@ -1027,7 +1041,7 @@ def number_of_rounds(players: int) -> int:
     else:
         return lower_bound
 
-def write_data(teams: list, scores_np: np.ndarray) -> None:
+def write_data(teams: list, scores_np: np.ndarray, seeding_method: str) -> None:
 
     #create a txt file of player IDs sorted by seed
     with open('Extra data/player IDs.txt', 'w') as  file:
@@ -1040,17 +1054,25 @@ def write_data(teams: list, scores_np: np.ndarray) -> None:
             file.write(str(player['FullName'])+'\n')
     
     # Get the indices to rearange seeding with highest seed at the top
-    sorted_indices = np.argsort(seeding[:, -1])
+    if seeding_method!="Average Rank":
+        sorted_indices = np.argsort(seeding_out[:, -1])[::-1]
+    else:
+        sorted_indices = np.argsort(seeding_out[:, -1])
 
-    #create file of seeds
+    # Create file of seeds
     with open('Extra data/seeding.txt', 'w') as file:
         i = 0
-        for row in seeding[sorted_indices][:, 1:]:
-            # Convert each row to a tab-separated string
-            row_str = teams[i]['FullName']+'\t'+'\t'.join(map(str, row))
+        for row in seeding_out[sorted_indices][:, 1:]:
+            # Convert each row to a tab-separated string, format integers without '.0'
+            formatted_row = [teams[i]['FullName']] + [
+                f"{int(val)}" if val.is_integer() else f"{val:.3}" for val in row
+            ]
+            row_str = '\t'.join(formatted_row)
+            
             # Write the row string to the file, followed by a newline
             file.write(row_str + '\n')
             i += 1
+
     
     #create file of scores
     with open('Extra data/scores.txt', 'w') as file:
@@ -2108,7 +2130,7 @@ def create_bracket(api: Ossapi, mp: list, number_of_qualifying_players: int, red
         
         with open('bracket.json', 'w') as file:
             json.dump(data, file, indent=2)
-        write_data(teamsJSON, scores_np)
+        write_data(teamsJSON, scores_np, seeding_method)
 
         GUI_terminal_print('Done!')
         enable_widgets(root)
@@ -2119,16 +2141,17 @@ def create_bracket(api: Ossapi, mp: list, number_of_qualifying_players: int, red
 
 
 #defining global variables
-counter = 0
-script_terminating = False
-failed_lobby_data = {}
+counter = 0 #the counter you see in the GUI terminal
+script_terminating = False #checks this value for every iteration of requesting data
+failed_lobby_data = {} #data input in the error solver
 failed_lobby_score_input_boxes = {}
 failed_lobby_player_list = []
-manual_score_input_boxes = []
+manual_score_input_boxes = [] #data input in the manual input
 manual_player_input_boxes = []
-scores_dict = {}
-player_data = {}
-seeding = np.array([])
+scores_dict = {} #the raw player scores
+player_data = {} #data from all players
+seeding = np.array([]) #used all over the script
+seeding_out = np.array([]) #used in 'write_data()'
 
 #set appearance
 ctk.set_appearance_mode("light")
@@ -2263,8 +2286,11 @@ team_vs_var = tk.BooleanVar()
 team_vs_checkbox = ctk.CTkCheckBox(settings_frame, text="TeamVS", variable=team_vs_var)
 team_vs_checkbox.grid(padx=GUI_xspacing, pady=GUI_yspacing, sticky='w')
 
-#create a large text box with scrollbar
+#create a large text box with scrollbar, guiding label for teams input, and a tool tip
 team_vs_input_box = ctk.CTkTextbox(settings_frame, height=100, width=400, border_width=5)
+team_vs_input_title = ctk.CTkLabel(settings_frame, text="Write Name, Team, ID seperated by tab or comma for all participating players")
+team_vs_input_help = ctk.CTkLabel(settings_frame, text="Help?", font=help_font, text_color='gray40')
+ToolTip(team_vs_input_help, 'You can just copy your screening file. The format should look this this: \nmrekk,almond,7562902\nAccolibed,almond,9269034\nlifeline,walnut,11367222\ngnahus,walnut,12779141')
 
 #create seeding method menu
 seeding_method_label = ctk.CTkLabel(settings_frame, text="Seeding method")
@@ -2313,7 +2339,7 @@ feedback_frame.pack(padx=subframes_indent, anchor='w')
 #create discord link button
 discord_logo = ctk.CTkImage(light_image=Image.open('Resources/discord_logo.png'), size=(50, 40))
 
-discord_button = ctk.CTkButton(feedback_frame, text='', width=50, image=discord_logo, command=lambda: webbrowser.open('https://discord.gg/qrnZsnhB'), fg_color="white", hover_color="grey95")
+discord_button = ctk.CTkButton(feedback_frame, text='', width=50, image=discord_logo, command=lambda: webbrowser.open('https://discord.gg/vjeQg8DqNG'), fg_color="white", hover_color="grey95")
 discord_button.pack(side="left")
 
 #create github link button
