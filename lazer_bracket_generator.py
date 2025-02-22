@@ -959,7 +959,7 @@ def get_seeding(scores: np.ndarray, seeding_method: str, mappool_size: int) -> n
     map_seeds_out = map_seeds
     if seeding_method=="Total Score":
         map_seeds = scores[:, 1:]
-    if seeding_method=="Yokespai's Formula":
+    if seeding_method=="Zipf's Law":
         row_sums = np.sum(100/(map_seeds+mappool_size*1.4), axis=1)
         sorted_indices = np.argsort(row_sums)[::-1]
     else:
@@ -971,7 +971,7 @@ def get_seeding(scores: np.ndarray, seeding_method: str, mappool_size: int) -> n
         final_seed[sorted_indices] = np.arange(len(sorted_indices), 0, -1)
     seeding = np.column_stack([scores[:,0], map_seeds, final_seed])
 
-    if seeding_method=="Yokespai's Formula":
+    if seeding_method=="Zipf's Law":
         seed_score = row_sums
     elif seeding_method=="Average Rank":
         seed_score = map_seeds.sum(1)/mappool_size
@@ -2303,7 +2303,7 @@ ToolTip(team_vs_input_help, 'You can just copy your screening file. The format s
 #create seeding method menu
 seeding_method_label = ctk.CTkLabel(settings_frame, text="Seeding method")
 seeding_method_label.grid(padx=GUI_xspacing, pady=(5,0), sticky='w')
-seeding_methods = ["Total Score", "Average Rank", "Yokespai's Formula"]
+seeding_methods = ["Total Score", "Average Rank", "Zipf's Law"]
 seeding_method_menu = ctk.CTkComboBox(settings_frame, values=seeding_methods)
 seeding_method_menu.grid(padx=GUI_xspacing, pady=(0,5), sticky='w')
 seeding_method_menu.set("Total Score")
